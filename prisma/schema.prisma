@@ -1,0 +1,121 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         Int      @id @default(autoincrement())
+  username   String   @unique
+  email      String   @unique
+  password   String
+  createdAt  DateTime? @default(now())
+  last_login DateTime? @updatedAt
+  rol        Rol    @relation(fields: [rolID], references: [id])
+  rolID      Int
+  auth       Boolean?
+  token      String?
+  provincia  String?
+  metodoPago MetodoPago
+  orders     Order[]
+  carritos   Carrito?
+  products   Product[]  @relation("UserProducts")
+}
+
+model Rol {
+  id       Int    @id @default(autoincrement())
+  rol_name String @unique
+  User     User[]
+}
+
+
+// ENUMS
+enum MetodoPago {
+  Enzona
+  Transfermovil
+}
+
+// MODEL PRODUCT
+model Product {
+  id            Int               @id @default(autoincrement())
+  name          String
+  description   String
+  price         Float
+  stock         Int
+  imageUrl      String
+  categoria     String
+  orders        OrderProduct[]
+  carritoItems  ItemCarrito[]
+  precioGeneral Float
+  publicadoPor  Int
+  mipyme        User              @relation("UserProducts", fields: [publicadoPor], references: [id])
+  precios       PrecioProvincia[]
+  imagenes      ImagenProduct[]
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+}
+
+// MODEL ORDER
+model Order {
+  id        Int            @id @default(autoincrement())
+  userID    Int
+  total     Float
+  user      User           @relation(fields: [userID], references: [id])
+  products  OrderProduct[]
+  createdAt DateTime       @default(now())
+}
+
+// MODEL ORDER PRODUCT
+model OrderProduct {
+  id        Int     @id @default(autoincrement())
+  orderId   Int
+  productId Int
+  cantidad  Int
+  order     Order   @relation(fields: [orderId], references: [id])
+  product   Product @relation(fields: [productId], references: [id])
+}
+
+// MODEL CARRITO
+model Carrito {
+  id     Int           @id @default(autoincrement())
+  userID Int           @unique
+  user   User          @relation(fields: [userID], references: [id])
+  items  ItemCarrito[]
+}
+
+// MODEL ITEM CARRITO
+model ItemCarrito {
+  id        Int     @id @default(autoincrement())
+  cantidad  Int
+  productId Int
+  product   Product @relation(fields: [productId], references: [id])
+  carritoId Int
+  carrito   Carrito @relation(fields: [carritoId], references: [id])
+}
+
+// MODEL PRECIO PROVINCIA
+model PrecioProvincia {
+  id        Int     @id @default(autoincrement())
+  provincia String
+  precio    Float
+  product   Product @relation(fields: [productId], references: [id])
+  productId Int
+}
+
+// MODEL IMAGEN PRODUCTO
+model ImagenProduct {
+  id        Int     @id @default(autoincrement())
+  url       String
+  product   Product @relation(fields: [productId], references: [id])
+  productId Int
+}
+
