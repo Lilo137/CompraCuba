@@ -16,37 +16,43 @@ export class AuthService {
   ) {}
 
   async login(email: string, password: string, res: any): Promise<AuthEntity> {
-    const user = await this.prisma.user.findUnique({ where: { email: email } });
+  const user = await this.prisma.user.findUnique({ where: { email } });
+  if (!user) throw new NotFoundException('Usuario no existente');
 
-    if (!user) {
-      throw new NotFoundException('Usuario no existente');
-    }
+  const isPasswordValid = await bcrypt.compare(password, user.password);
+  if (!isPasswordValid) throw new UnauthorizedException('Contraseña incorrecta');
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+  // Firmar JWT
+  const payload = {
+    userId: user.id,
+    username: user.username,
+    email: user.email,
+    rolID: user.rolID,
+  };
+  const token = this.jwtService.sign(payload);
 
-    if (!isPasswordValid) {
-      throw new UnauthorizedException('Contraseña incorrecta');
-    }
+  // Guardar cookie y marcar 'auth' en la BD (si lo deseas)
+  res.cookie('user_token', token);
+  await this.prisma.user.update({
+    where: { id: user.id },
+    data: { auth: true, token: token },
+  });
 
-    const token = this.jwtService.sign({
-      userId: user.id,
+  // **DEVOLVER user + access_token** con esas exactas propiedades
+  return {
+    access_token: token,
+    user: {
+      id: user.id,
       username: user.username,
       email: user.email,
-      rolId: user.rolID,
-    });
+      rolID: user.rolID,
+      provincia: user.provincia,
+      metodoPago: user.metodoPago,
+    },
+  };
+}
 
-    res.cookie('user_token', token); //Aprox 10mins dura el token by OSwald
-    const id = user.id;
 
-    this.prisma.user.update({ where: { id }, data: user });
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: { auth: true, token: token },
-    });
-    return {
-      accessToken: token,
-    };
-  }
 
   async logout(res: any, email: string) {
     res.cookie('user_token', '', { expires: new Date(Date.now()) });
@@ -54,6 +60,6 @@ export class AuthService {
       where: { email: email },
       data: { auth: false, token: '' },
     });
-    return 'Sección cerrada!';
+    return 'Sesión cerrada!';
   }
 }

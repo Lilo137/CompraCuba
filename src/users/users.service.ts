@@ -6,6 +6,7 @@ import { MetodoPago } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 export const lengthHash = 10; 
+
 @Injectable()
 export class UsersService {
   constructor(private prisma: PrismaService) {}
